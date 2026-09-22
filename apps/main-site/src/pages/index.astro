@@ -1,0 +1,58 @@
+---
+import MainLayout from "src/layouts/MainLayout.astro";
+import HomeLayout from 'src/layouts/HomeLayout.astro';
+import BlockResolver from '@anothersteporg/ui/components/BlockResolver.astro';
+import AboutSection from 'src/components/AboutSection.astro';
+import ValuesSection from 'src/components/ValuesSection.astro';
+import EthicsSection from '../components/EthicsSection.astro';
+import PublicDisclousre from '../components/PublicDisclosure.astro';
+import PromoModal from '@anothersteporg/ui/components/PromoModal.astro';
+
+import "src/styles/global.css";
+import { wpFetch, EDITOR_BLOCKS_FRAGMENT } from '@anothersteporg/ui/lib/wp.js';
+
+// Query both root nodes simultaneously
+const data = await wpFetch(`
+  query GetHomeAndPromo {
+    page(id: "home", idType: URI) {
+      title
+      ${EDITOR_BLOCKS_FRAGMENT}
+    }
+    promos(first: 1, where: { orderby: { field: DATE, order: DESC } }) {
+      nodes {
+        title
+        content
+        featuredImage {
+          node {
+            sourceUrl
+          }
+        }
+        promoFields {
+          buttontext
+          buttonlink
+        }
+      }
+    }
+  }
+`);
+
+const blocks = data?.page?.editorBlocks || [];
+const latestPromo = data?.promos?.nodes?.[0] || null;
+
+// Strip HTML tags from WP content for the modal description
+const cleanDescription = latestPromo?.content?.replace(/<[^>]*>?/gm, '') || "";
+---
+<HomeLayout title={data?.page?.title}>
+	{latestPromo && (
+		<PromoModal
+			id='wp-dynamic-promo'
+			title={latestPromo?.title}
+			description={cleanDescription}
+			buttonText={latestPromo?.promoFields?.buttontext}
+			buttonLink={latestPromo?.promoFields?.buttonlink}
+			image={latestPromo?.featuredImage?.node?.sourceUrl}
+			showDelay={3000}
+		/>			
+	)}
+		<BlockResolver blocks={blocks} />
+</HomeLayout>
